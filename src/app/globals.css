@@ -14,8 +14,13 @@
 /* ---------- Suporte para tema escuro baseado no sistema ---------- */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: var(--color-dark-blue);  /* Fundo escuro */
-    --foreground: var(--color-white);      /* Texto claro */
+  --color-dark-blue: #0D1B2A;     /* Azul escuro (principal) */
+  --color-light-blue: #1B263B;    /* Azul claro (secundário) */
+  --color-white: #FFFFFF;
+  --color-black: #000000;
+
+  --background: var(--color-white);        /* Fundo padrão (modo claro) */
+  --foreground: var(--color-black);        /* Texto padrão (modo claro) */
   }
 }
 
