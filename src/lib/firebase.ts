@@ -1,9 +1,10 @@
 // /src/lib/firebase.ts
+
 import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// Configuração usando variáveis de ambiente
+// ✅ Configuração segura via .env.local
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -13,9 +14,9 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// Garante que não reinicialize em hot reload
+// ✅ Garante que o Firebase não seja reinicializado em hot reload
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-// Exporta auth e firestore
+// ✅ Exporta auth e Firestore
 export const auth = getAuth(app);
 export const db = getFirestore(app);
