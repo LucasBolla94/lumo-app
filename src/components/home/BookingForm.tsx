@@ -7,7 +7,7 @@ import { useTodayDate } from "../booking/useToday";
 import { SERVICE_PRICES, TIME_SLOTS } from "@/utils/constants";
 import Image from "next/image";
 
-// Tipagem do formulário (sem campos derivados)
+// Tipagem do formulário com novos campos adicionados
 type BookingFormData = {
   name: string;
   lastName: string;
@@ -20,6 +20,9 @@ type BookingFormData = {
   estimate: number;
   reference: string;
   preferredContact: string[];
+  address: string;
+  number: string;
+  postcode: string;
 };
 
 export default function BookingForm() {
@@ -35,28 +38,27 @@ export default function BookingForm() {
     time: "",
     hours: 0,
     preferredContact: [],
+    address: "",
+    number: "",
+    postcode: "",
   });
 
   const [estimate, setEstimate] = useState(0);
   const [loading, setLoading] = useState(false);
   const [submittedRef, setSubmittedRef] = useState<string | null>(null);
 
-  // Filtra horários inválidos para a data atual
   const filteredTimeSlots = useMemo(() => {
     if (!form.date || !today) return [];
-
     if (form.date !== today) return TIME_SLOTS;
 
     const now = new Date();
     const nowMinutes = now.getHours() * 60 + now.getMinutes();
-
     return TIME_SLOTS.filter(slot => {
       const [h, m] = slot.split(":").map(Number);
       return h * 60 + m > nowMinutes;
     });
   }, [form.date, today]);
 
-  // Atualização de estado e cálculo de estimativa
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
 
@@ -81,7 +83,6 @@ export default function BookingForm() {
     }
   };
 
-  // Geração de referência única no formato L{DDMMYY}{4DIG}
   const generateReference = async (): Promise<string> => {
     const snapshot = await getDocs(collection(db, "bookings"));
     let ref: string;
@@ -98,7 +99,6 @@ export default function BookingForm() {
     return ref;
   };
 
-  // Validações adicionais
   const validateForm = () => {
     if (!/^\d{7,15}$/.test(form.phone)) {
       alert("Please enter a valid phone number (digits only).");
@@ -112,13 +112,16 @@ export default function BookingForm() {
       alert("Please select at least one preferred contact method.");
       return false;
     }
+    if (!form.address.trim() || !form.number.trim() || !form.postcode.trim()) {
+      alert("Please complete the full address: address, number and postcode.");
+      return false;
+    }
     return true;
   };
 
-  // Submissão do formulário
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loading) return; // Anti-flood
+    if (loading) return;
     if (!validateForm()) return;
 
     setLoading(true);
@@ -142,6 +145,9 @@ export default function BookingForm() {
         time: "",
         hours: 0,
         preferredContact: [],
+        address: "",
+        number: "",
+        postcode: "",
       });
       setEstimate(0);
     } catch (error) {
@@ -176,6 +182,13 @@ export default function BookingForm() {
           {/* Telefone e Email */}
           <input type="tel" name="phone" placeholder="Phone Number" inputMode="numeric" value={form.phone} onChange={handleChange} required className="p-3 border border-gray-300 rounded" />
           <input type="email" name="email" placeholder="Email Address" value={form.email} onChange={handleChange} required className="p-3 border border-gray-300 rounded" />
+
+          {/* Endereço manual */}
+          <input name="address" placeholder="Address (Street and Name)" value={form.address} onChange={handleChange} required className="p-3 border border-gray-300 rounded" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input name="number" placeholder="Number" value={form.number} onChange={handleChange} required className="p-3 border border-gray-300 rounded" />
+            <input name="postcode" placeholder="Postcode" value={form.postcode} onChange={handleChange} required className="p-3 border border-gray-300 rounded" />
+          </div>
 
           {/* Serviço */}
           <select name="service" value={form.service} onChange={handleChange} required className="p-3 border border-gray-300 rounded bg-white">

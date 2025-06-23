@@ -1,52 +1,108 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import { auth } from "@/lib/firebase";
-import { onAuthStateChanged, signOut } from "firebase/auth";
+import { auth, db } from "@/lib/firebase";
+import { collection, getDocs } from "firebase/firestore";
+import BookingList from "@/components/dash/BookingList";
+import BookingDetails from "@/components/dash/BookingDetails";
+import type { BookingFormData } from "@/types/booking";
 
-export default function OperationsDashboard() {
+export default function DashboardPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
 
+  // 🔧 Armazena os bookings e estado selecionado
+  const [bookings, setBookings] = useState<(BookingFormData & { id: string })[]>([]);
+  const [selectedBooking, setSelectedBooking] = useState<BookingFormData & { id: string } | null>(null);
+
+  // 🔍 Campo de busca (por telefone, email ou referência)
+  const [search, setSearch] = useState("");
+
+  // ⏳ Estados de carregamento e autenticação
+  const [loading, setLoading] = useState(true);
+  const [isAuthChecked, setIsAuthChecked] = useState(false);
+
+  // 🔐 Verifica se o usuário está autenticado
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsub = onAuthStateChanged(auth, (user) => {
       if (!user) {
-        router.push("/operations"); // redireciona se não logado
+        router.push("/operations"); // 🔁 Redireciona se não autenticado
       } else {
-        setUserEmail(user.email);
-        setLoading(false);
+        setIsAuthChecked(true);
       }
     });
 
-    return () => unsubscribe();
+    return () => unsub();
   }, [router]);
 
-  const handleLogout = async () => {
-    await signOut(auth);
-    router.push("/operations");
-  };
+  // 🔄 Carrega os dados do Firestore após autenticação
+  useEffect(() => {
+    if (!isAuthChecked) return;
 
-  if (loading) return <p className="p-6 text-center text-gray-600">Loading...</p>;
+    const fetchBookings = async () => {
+      try {
+        const snap = await getDocs(collection(db, "bookings"));
+
+        const data = snap.docs.map((doc) => {
+          const booking = doc.data() as BookingFormData;
+          return {
+            ...booking,
+            id: doc.id, // ✅ Coloca o ID por último para não ser sobrescrito
+          };
+        });
+
+        setBookings(data);
+        setLoading(false);
+
+        console.log("✅ Bookings carregados:", data); // Debug opcional
+      } catch (error) {
+        console.error("❌ Erro ao buscar bookings:", error);
+        setLoading(false);
+      }
+    };
+
+    fetchBookings();
+  }, [isAuthChecked]);
+
+  // 🔎 Filtragem baseada em referência, telefone ou email
+  const filtered = bookings.filter((b) =>
+    b.reference?.toLowerCase().includes(search.toLowerCase()) ||
+    b.phone?.toLowerCase().includes(search.toLowerCase()) ||
+    b.email?.toLowerCase().includes(search.toLowerCase())
+  );
+
+  // ⏳ Enquanto carrega
+  if (!isAuthChecked || loading) {
+    return (
+      <main className="min-h-screen flex items-center justify-center text-gray-500">
+        Loading dashboard...
+      </main>
+    );
+  }
 
   return (
-    <main className="min-h-screen bg-white px-4 py-6">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold text-blue-800 mb-4">Lumo Clean - Dashboard</h1>
-        <p className="text-gray-700 mb-6">Welcome, <span className="font-semibold">{userEmail}</span></p>
+    <main className="min-h-screen bg-slate-50 p-4">
+      <div className="max-w-5xl mx-auto">
+        <h1 className="text-2xl font-bold text-blue-800 mb-4">Bookings Panel</h1>
 
-        <button
-          onClick={handleLogout}
-          className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md"
-        >
-          Logout
-        </button>
-
-        {/* Aqui você pode adicionar cards, botões, etc */}
-        <div className="mt-8">
-          <p className="text-gray-500">Dashboard content goes here...</p>
-        </div>
+        {selectedBooking ? (
+          <BookingDetails
+            booking={selectedBooking}
+            onClose={() => setSelectedBooking(null)}
+          />
+        ) : (
+          <>
+            <input
+              type="text"
+              placeholder="Search by reference, phone or email"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full p-2 mb-4 border border-gray-300 rounded-md"
+            />
+            <BookingList bookings={filtered} onSelect={setSelectedBooking} />
+          </>
+        )}
       </div>
     </main>
   );
